@@ -90,6 +90,19 @@ export const contractABI = [
           "internalType": "bytes32",
           "name": "propHash",
           "type": "bytes32"
+        }
+      ],
+      "name": "PropertyCanceled",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "propHash",
+          "type": "bytes32"
         },
         {
           "indexed": false,
@@ -156,6 +169,19 @@ export const contractABI = [
       "name": "buyProperty",
       "outputs": [],
       "stateMutability": "payable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "propHash",
+          "type": "bytes32"
+        }
+      ],
+      "name": "cancelListing",
+      "outputs": [],
+      "stateMutability": "nonpayable",
       "type": "function"
     },
     {

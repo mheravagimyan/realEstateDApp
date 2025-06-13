@@ -9,8 +9,9 @@ export default function Navbar() {
           <FaEthereum /> Real Estate DApp
         </Link>
         <div className="flex gap-6 text-sm">
-          <Link to="/sell" className="hover:text-accent">Продать</Link>
-          <Link to="/buy"  className="hover:text-accent">Купить</Link>
+          <Link to="/sell"        className="hover:text-accent">Продать</Link>
+          <Link to="/buy"         className="hover:text-accent">Купить</Link>
+          <Link to="/my-listings" className="hover:text-accent">Мои лоты</Link>
         </div>
       </div>
     </nav>

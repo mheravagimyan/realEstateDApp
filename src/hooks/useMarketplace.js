@@ -6,7 +6,6 @@ export function useMarketplace() {
   const [provider, setProvider] = useState(null);
   const [marketplace, setMarketplace] = useState(null);
 
-  /* инициализируем провайдер один раз */
   useEffect(() => {
     if (!window.ethereum) return;
     const p = new ethers.BrowserProvider(window.ethereum);
@@ -14,46 +13,63 @@ export function useMarketplace() {
     setMarketplace(new ethers.Contract(CONTRACT_ADDRESS, ABI, p));
   }, []);
 
-  /** Получить ВСЕ активные лоты */
+  /** Fetch all active listings for BuyPage */
   const fetchListings = useCallback(async () => {
     if (!marketplace) return [];
-    /* 1. читаем события PropertyListed */
-    // ―–– query all “PropertyListed” events с 0-го блока до последнего
     const logs = await marketplace.queryFilter(
-        marketplace.filters.PropertyListed(),   // готовый фильтр
-        0,                                      // fromBlock   (BigInt или number)
-        "latest"                                // toBlock
+      marketplace.filters.PropertyListed(),
+      0,
+      "latest"
     );
-
-    // logs уже PARSED, поля лежат в logs[i].args
-    const decoded = logs;   // переименовываем переменную, остальной код не меняется
-
-    /* 2. фильтруем по ещё не проданным */
     const result = [];
-    for (const ev of decoded) {
-      const { propHash, price } = ev.args;
+    for (const ev of logs) {
+      const { propHash } = ev.args;
       const lst = await marketplace.listings(propHash);
       if (lst.forSale) {
-        result.push({
-          hash: propHash,
-          priceWei: lst.price,
-        });
+        result.push({ hash: propHash, priceWei: lst.price });
       }
     }
     return result;
-  }, [marketplace, provider]);
+  }, [marketplace]);
 
-  /** Купить объект */
+  /** Fetch only my active listings */
+  const fetchMyListings = useCallback(async (account) => {
+    if (!marketplace) return [];
+    const hashes = await marketplace.getOwnerProperties(account);
+    const result = [];
+    for (const propHash of hashes) {
+      const lst = await marketplace.listings(propHash);
+      if (lst.forSale) {
+        result.push({ hash: propHash, priceWei: lst.price });
+      }
+    }
+    return result;
+  }, [marketplace]);
+
   const buyProperty = useCallback(
     async (hash, priceWei) => {
-      if (!window.ethereum) throw new Error("MetaMask required");
+      if (!provider || !marketplace) throw new Error("Not ready");
       const signer = await provider.getSigner();
-      const cont   = marketplace.connect(signer);
-      const tx = await cont.buyProperty(hash, { value: priceWei });
-      return tx;
+      const cont = marketplace.connect(signer);
+      return await cont.buyProperty(hash, { value: priceWei });
     },
     [provider, marketplace]
   );
 
-  return { fetchListings, buyProperty };
+  const cancelListing = useCallback(
+    async (hash) => {
+      if (!provider || !marketplace) throw new Error("Not ready");
+      const signer = await provider.getSigner();
+      const cont = marketplace.connect(signer);
+      return await cont.cancelListing(hash);
+    },
+    [provider, marketplace]
+  );
+
+  return {
+    fetchListings,
+    fetchMyListings,
+    buyProperty,
+    cancelListing,
+  };
 }

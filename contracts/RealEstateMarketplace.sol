@@ -30,32 +30,40 @@ contract RealEstateMarketplace is Ownable(msg.sender), ReentrancyGuard {
     event PropertyListed(bytes32 indexed propHash, uint256 price);
     event PropertySold(bytes32 indexed propHash, address indexed buyer, uint256 amountPaid);
     event FeesWithdrawn(uint256 amount);
+    event PropertyCanceled(bytes32 indexed propHash);
 
     constructor(uint16 _feeBps) {
         require(_feeBps <= 250, "Marketplace: fee too high");
         feeBps = _feeBps;
     }
 
-    function _registerProperty(bytes32 propHash, uint price) private {
-        require(propHash != bytes32(0), "Marketplace: invalid hash");
-        require(propertyOwner[propHash] == address(0), "Marketplace: already registered");
-        propertyOwner[propHash] = msg.sender;
-        ownerProperties[msg.sender].push(propHash);
-        listings[propHash] = Listing({ price: price, forSale: false });
+    function cancelListing(bytes32 propHash) external {
+        require(propertyOwner[propHash] == msg.sender, "Marketplace: not owner");
+        Listing storage lst = listings[propHash];
+        require(lst.forSale, "Marketplace: not listed");
+        lst.forSale = false;
+        emit PropertyCanceled(propHash);
     }
 
-    /// @notice Register and immediately list a property for sale
+    /// @notice List (or relist) a property for sale, registering it if new
     function listProperty(bytes32 propHash, uint256 price) external {
-        _registerProperty(propHash, price);
-        _listProperty(propHash, price);
-        emit PropertyRegistered(propHash, msg.sender);
+        require(price > 0, "Marketplace: price must be > 0");
+
+        // Регистрируем, если лот ещё не создан
+        if (propertyOwner[propHash] == address(0)) {
+            require(propHash != bytes32(0), "Marketplace: invalid hash");
+            propertyOwner[propHash] = msg.sender;
+            ownerProperties[msg.sender].push(propHash);
+            emit PropertyRegistered(propHash, msg.sender);
+        } else {
+            require(propertyOwner[propHash] == msg.sender, "Marketplace: not owner");
+        }
+
+        // Ставим лот на продажу или обновляем цену при релисте
+        listings[propHash] = Listing({ price: price, forSale: true });
         emit PropertyListed(propHash, price);
     }
 
-    function _listProperty(bytes32 propHash, uint256 price) private {
-        require(price > 0, "Marketplace: price must be > 0");
-        listings[propHash] = Listing({ price: price, forSale: true });
-    }
 
     /// @notice Buy a listed property using ETH
     function buyProperty(bytes32 propHash) external payable nonReentrant {
